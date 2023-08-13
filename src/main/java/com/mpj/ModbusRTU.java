@@ -76,8 +76,6 @@ public class ModbusRTU {
         hexCommand.CreateHexCommandWOCRC();
         hexCommand.addCrcToCommand();
 
-        System.out.println(encodeHexString(hexCommand.getCommandWithCrc()));
-
         this.serialPort.writeBytes(hexCommand.getCommandWithCrc(), 8);
         Thread.sleep(40);
         byte[] bytebuffer= new byte[20];
@@ -89,19 +87,34 @@ public class ModbusRTU {
         HexCommandSingleWork hexCommand = new HexCommandSingleWork();
         hexCommand.setSlaveId(HexFormat.of().parseHex(slaveId));
         hexCommand.setFuncCode(HexFormat.of().parseHex("03"));
-        hexCommand.setRegisterAddr(HexFormat.of().parseHex("0002"));
-        hexCommand.setRegisterValue(HexFormat.of().parseHex("0001"));
+        hexCommand.setRegisterAddr(HexFormat.of().parseHex("0001"));
+        hexCommand.setRegisterValue(HexFormat.of().parseHex("0003"));
         hexCommand.CreateHexCommandWOCRC();
         hexCommand.addCrcToCommand();
         byte[] command = hexCommand.getCommandWithCrc();
-        System.out.println(encodeHexString(command));
         this.serialPort.writeBytes(command, 8);
-        byte[] readByte = new byte[7];
+        byte[] readByte = new byte[15];
         Thread.sleep(40);
-        this.serialPort.readBytes(readByte,7);
+        this.serialPort.readBytes(readByte,15);
         Thread.sleep(40);
         return readByte;
+    }
 
+    public void writeMultipleRegister(String slaveId, String stRegAddr, String numOfReg, String Values) throws InterruptedException {
+        HexCommandMultipleWork hexCommandMultipleWork = new HexCommandMultipleWork();
+        hexCommandMultipleWork.setFuncCode(HexFormat.of().parseHex("10"));
+        hexCommandMultipleWork.setSlaveId(HexFormat.of().parseHex(slaveId));
+        hexCommandMultipleWork.setRegisterStAddr(HexFormat.of().parseHex(stRegAddr));
+        hexCommandMultipleWork.setRegisterNum(HexFormat.of().parseHex(numOfReg));
+        hexCommandMultipleWork.setRegistersValue(HexFormat.of().parseHex(Values));
+        hexCommandMultipleWork.CreateHexCommandWOCRC();
+        hexCommandMultipleWork.addCrcToCommand();
+        System.out.println(encodeHexString(hexCommandMultipleWork.getCommandWithCrc()));
+        serialPort.writeBytes(hexCommandMultipleWork.getCommandWithCrc(), hexCommandMultipleWork.getCommandWithCrc().length);
+        Thread.sleep(40);
+        byte[] bytebuffer= new byte[9+Values.length()/2];
+        serialPort.readBytes(bytebuffer,15);
+        System.out.println(encodeHexString(bytebuffer));
     }
     public static String encodeHexString(byte[] byteArray) {
         StringBuffer hexStringBuffer = new StringBuffer();
