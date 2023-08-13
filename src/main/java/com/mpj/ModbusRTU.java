@@ -5,6 +5,16 @@ import com.fazecast.jSerialComm.SerialPort;
 import java.util.HexFormat;
 
 public class ModbusRTU {
+
+
+    private String serialPortName = "/dev/ttyUSB0"; // Replace with the name of your serial port
+    private int baudRate;                  // Replace with the baud rate of your Modbus device
+    private int dataBits;                     // Replace with the number of data bits (typically 8)
+    private int stopBits;                      // Replace with the number of stop bits (typically 1)
+    private int parity;
+    private SerialPort serialPort;
+
+
     public String getSerialPortName() {
         return serialPortName;
     }
@@ -45,14 +55,12 @@ public class ModbusRTU {
         this.parity = parity;
     }
 
-    private String serialPortName = "/dev/ttyUSB0"; // Replace with the name of your serial port
-    private int baudRate = 9600;                   // Replace with the baud rate of your Modbus device
-    private int dataBits = 8;                      // Replace with the number of data bits (typically 8)
-    private int stopBits = 1;                      // Replace with the number of stop bits (typically 1)
-    private int parity = SerialPort.NO_PARITY;
-    private SerialPort serialPort;
-
     public ModbusRTU() {
+        this.serialPortName = "/dev/ttyUSB0"; // Replace with the name of your serial port
+        this.baudRate = 9600;                   // Replace with the baud rate of your Modbus device
+        this.dataBits = 8;                      // Replace with the number of data bits (typically 8)
+        this.stopBits = 1;                      // Replace with the number of stop bits (typically 1)
+        this.parity = SerialPort.NO_PARITY;
         HexCommandSingleWork hexCommand = new HexCommandSingleWork();
         // Define the Modbus RTU device parameters
         this.serialPort = SerialPort.getCommPort(this.serialPortName);
@@ -67,64 +75,59 @@ public class ModbusRTU {
             System.out.println("port opened successfully!");
         }
     }
-    public void writeSingleRegister(String registerAddr, String slaveId, String value) throws InterruptedException {
-        HexCommandSingleWork hexCommand = new HexCommandSingleWork();
-        hexCommand.setFuncCode(HexFormat.of().parseHex("06"));
-        hexCommand.setRegisterAddr(HexFormat.of().parseHex(registerAddr));
-        hexCommand.setRegisterValue(HexFormat.of().parseHex(value));
-        hexCommand.setSlaveId(HexFormat.of().parseHex(slaveId));
-        hexCommand.CreateHexCommandWOCRC();
-        hexCommand.addCrcToCommand();
 
-        this.serialPort.writeBytes(hexCommand.getCommandWithCrc(), 8);
-        Thread.sleep(40);
-        byte[] bytebuffer= new byte[20];
-        this.serialPort.readBytes(bytebuffer,20);
-
+    public ModbusRTU(String serialPortName, int baudRate, int dataBits, int stopBits, int parity) {
+        this.serialPortName = serialPortName;
+        this.baudRate = baudRate;
+        this.dataBits = dataBits;
+        this.stopBits = stopBits;
+        this.parity = parity;
+        this.serialPort = SerialPort.getCommPort(this.serialPortName);
+        this.serialPort.setBaudRate(this.baudRate);
+        this.serialPort.setNumDataBits(this.dataBits);
+        this.serialPort.setNumStopBits(this.stopBits);
+        this.serialPort.setParity(this.parity);
+        if (!serialPort.openPort()) {
+            System.out.println("Failed to open the serial port.");
+        }
+        else {
+            System.out.println("port opened successfully!");
+        }
     }
 
-    public byte[] readSingleRegister(String registerAddr, String slaveId) throws InterruptedException {
-        HexCommandSingleWork hexCommand = new HexCommandSingleWork();
-        hexCommand.setSlaveId(HexFormat.of().parseHex(slaveId));
-        hexCommand.setFuncCode(HexFormat.of().parseHex("03"));
-        hexCommand.setRegisterAddr(HexFormat.of().parseHex("0001"));
-        hexCommand.setRegisterValue(HexFormat.of().parseHex("0003"));
-        hexCommand.CreateHexCommandWOCRC();
-        hexCommand.addCrcToCommand();
-        byte[] command = hexCommand.getCommandWithCrc();
+    public void writeSingleRegister(byte[] slaveId, byte[] registerAddr, byte[] value) throws InterruptedException {
+        HexSingleCommand hexCommand = new HexSingleCommand(Util.byteArrayToStrHex(slaveId), "06"
+                                    , Util.byteArrayToStrHex(registerAddr), Util.byteArrayToStrHex(value));
+
+        this.serialPort.writeBytes(hexCommand.getByteArrayCommand(), 8);
+        Thread.sleep(40);
+        byte[] bytebuffer= new byte[30];
+        this.serialPort.readBytes(bytebuffer,30);
+    }
+
+    public byte[] readSingleRegister(byte[] slaveId, byte[] registerAddr) throws InterruptedException {
+
+        HexSingleCommand hexSingleCommand = new HexSingleCommand(Util.byteArrayToStrHex(slaveId), "03"
+                                            , Util.byteArrayToStrHex(registerAddr),"0001");
+        byte[] command = hexSingleCommand.getByteArrayCommand();
         this.serialPort.writeBytes(command, 8);
-        byte[] readByte = new byte[15];
+        byte[] readByte = new byte[8];
         Thread.sleep(40);
-        this.serialPort.readBytes(readByte,15);
-        Thread.sleep(40);
+        this.serialPort.readBytes(readByte,8);
         return readByte;
     }
 
-    public void writeMultipleRegister(String slaveId, String stRegAddr, String numOfReg, String Values) throws InterruptedException {
-        HexCommandMultipleWork hexCommandMultipleWork = new HexCommandMultipleWork();
-        hexCommandMultipleWork.setFuncCode(HexFormat.of().parseHex("10"));
-        hexCommandMultipleWork.setSlaveId(HexFormat.of().parseHex(slaveId));
-        hexCommandMultipleWork.setRegisterStAddr(HexFormat.of().parseHex(stRegAddr));
-        hexCommandMultipleWork.setRegisterNum(HexFormat.of().parseHex(numOfReg));
-        hexCommandMultipleWork.setRegistersValue(HexFormat.of().parseHex(Values));
-        hexCommandMultipleWork.CreateHexCommandWOCRC();
-        hexCommandMultipleWork.addCrcToCommand();
-        System.out.println(encodeHexString(hexCommandMultipleWork.getCommandWithCrc()));
-        serialPort.writeBytes(hexCommandMultipleWork.getCommandWithCrc(), hexCommandMultipleWork.getCommandWithCrc().length);
+    public void writeMultipleRegister(byte[] slaveId, byte[] stRegAddr, byte[] numOfReg, byte[] values) throws InterruptedException {
+        String byteCount = Util.decToStrHex(values.length);
+        if(byteCount.length()<2) byteCount = "0" + byteCount;
+        HexMultipleCommand hexCommand = new HexMultipleCommand(Util.byteArrayToStrHex(slaveId),"10"
+                                        ,Util.byteArrayToStrHex(stRegAddr),Util.byteArrayToStrHex(numOfReg)
+                                        , byteCount ,Util.byteArrayToStrHex(values));
+        System.out.println(Util.byteArrayToStrHex(hexCommand.getByteArrayCommand()));
+        serialPort.writeBytes(hexCommand.getByteArrayCommand(), hexCommand.getByteArrayCommand().length);
         Thread.sleep(40);
-        byte[] bytebuffer= new byte[9+Values.length()/2];
-        serialPort.readBytes(bytebuffer,15);
-        System.out.println(encodeHexString(bytebuffer));
-    }
-    public static String encodeHexString(byte[] byteArray) {
-        StringBuffer hexStringBuffer = new StringBuffer();
-        for (int i = 0; i < byteArray.length; i++) hexStringBuffer.append(byteToHex(byteArray[i]));
-        return hexStringBuffer.toString();
-    }
-    public static String byteToHex(byte num) {
-        char[] hexDigits = new char[2];
-        hexDigits[0] = Character.forDigit((num >> 4) & 0xF, 16);
-        hexDigits[1] = Character.forDigit((num & 0xF), 16);
-        return new String(hexDigits);
+        byte[] bytebuffer= new byte[9+values.length];
+        serialPort.readBytes(bytebuffer,bytebuffer.length);
+        System.out.println(Util.byteArrayToStrHex(bytebuffer));
     }
 }

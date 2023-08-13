@@ -87,7 +87,7 @@ public class HexMultipleCommand extends HexCommand{
     private byte[] createByteCommand(){
         byte[] command = HexFormat.of().parseHex(this.strCommand);
         String commandString = Util.byteArrayToStrHex(command);
-        long crc = Util.calculateCRC(command,6);
+        long crc = Util.calculateCRC(command,0);
         int temp = (int) (crc % 256);
         crc /= 256;
         crc += 256 * temp;
