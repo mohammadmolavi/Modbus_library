@@ -19,14 +19,15 @@ public class HexMultipleCommand extends HexCommand{
         this.values = values;
         attachAllAttr();
         long longCRC;
-        if(byteCount != null && byteCount != "") {
-            longCRC = Util.calculateCRC(HexFormat.of().parseHex(strCommand), 9 + Integer.valueOf(byteCount));
-        }
-        else{
-            longCRC = Util.calculateCRC(HexFormat.of().parseHex(strCommand), 6);
-        }
-        this.CRC = HexFormat.of().parseHex(Util.decToStrHex((int)longCRC));
-        this.byteArrayCommand = HexFormat.of().parseHex(strCommand + Util.byteArrayToStrHex(this.CRC));
+//        if(byteCount != null && byteCount != "") {
+//            longCRC = Util.calculateCRC(HexFormat.of().parseHex(strCommand), 9 + Integer.valueOf(byteCount));
+//        }
+//        else{
+//            longCRC = Util.calculateCRC(HexFormat.of().parseHex(strCommand), 0);
+//        }
+//        this.CRC = HexFormat.of().parseHex(Util.decToStrHex((int)longCRC));
+//        this.byteArrayCommand = HexFormat.of().parseHex(strCommand + Util.byteArrayToStrHex(this.CRC));
+        createByteCommand();
     }
 
     public HexMultipleCommand(byte[] completeCommand) {
@@ -88,7 +89,7 @@ public class HexMultipleCommand extends HexCommand{
         byte[] command = HexFormat.of().parseHex(this.strCommand);
         String commandString = Util.byteArrayToStrHex(command);
         long crc = Util.calculateCRC(command,0);
-        int temp = (int) (crc % 256);
+        long temp = crc % 256;
         crc /= 256;
         crc += 256 * temp;
         commandString += Util.decToStrHex((int)crc);

@@ -60,7 +60,7 @@ public class HexSingleCommand extends HexCommand{
         byte[] command = HexFormat.of().parseHex(this.strCommand);
         String commandString = Util.byteArrayToStrHex(command);
         long crc = Util.calculateCRC(command,6);
-        int temp = (int) (crc % 256);
+        long temp = crc % 256;
         crc /= 256;
         crc += 256 * temp;
         commandString += Util.decToStrHex((int)crc);
